@@ -2,9 +2,11 @@ use serde::{Deserialize, Serialize};
 use web_sys::{InputEvent, KeyboardEvent};
 use yew::prelude::*;
 use yew::{html, Component, Context, Html};
+use crate::todos::components::{AddTodoForm, TodoHeader, TodoList};
 use crate::ToDosMsg;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(PartialEq)]
 pub struct ToDo{
     pub id: usize,
     pub text: String,
@@ -55,6 +57,15 @@ impl ToDosModel {
         }
         true
     }
+
+    pub fn handle_message(&mut self, msg: ToDosMsg) -> bool {
+        match msg {
+            ToDosMsg::UpdateToDo(text) => self.update_new_todo_text(text),
+            ToDosMsg::AddToDo(text) => self.add_todo(text),
+            ToDosMsg::ToggleToDo(id) => self.toggle_todo(id),
+            ToDosMsg::RemoveToDo(id) => self.remove_todo(id),
+        }
+    }
 }
 
 impl Component for ToDosModel {
@@ -66,82 +77,28 @@ impl Component for ToDosModel {
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            ToDosMsg::UpdateToDo( text) => self.update_new_todo_text(text),
-            ToDosMsg::AddToDo(text) => self.add_todo(text),
-            ToDosMsg::ToggleToDo(id) => self.toggle_todo(id),
-            ToDosMsg::RemoveToDo(id) => self.remove_todo(id),
-        }
+        self.handle_message(msg)
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
 
+    fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
 
-        html! {
-             <div>
-                <h1>{"Todo App"}</h1>
-                <p>{format!("You have {} todos", self.todos.len())}</p>
-                <div>
-                    <input
-                        type="text"
-                        placeholder="What needs to be done?"
-                        value={self.new_todo_text.clone()}
-                        oninput={link.callback(|e: InputEvent| {
-                            let input: web_sys::HtmlInputElement = e.target_unchecked_into();
-                            ToDosMsg::UpdateToDo(input.value())
-                        })}
-                        onkeypress={
-                            link.callback({
-                                let text = self.new_todo_text.clone();
-                                move |e: KeyboardEvent| {
-                                    if e.key() == "Enter" {
-                                        e.prevent_default();
-                                        ToDosMsg::AddToDo(text.clone())
-                                    } else {
-                                        // Just update with current value (no-op)
-                                        ToDosMsg::UpdateToDo(text.clone())
-                                    }
-                                }
-                            })
-                       }
-                    />
-                    <button
-                        onclick={link.callback({
-                            let text = self.new_todo_text.clone();
-                            move |_| ToDosMsg::AddToDo(text.clone())
-                        })}
-                    >
-                        {"Add"}
-                    </button>
-                    <div>
-                        {for self.todos.iter().map(|todo| {
-                            let todo_id = todo.id; // Capture the ID as an owned value
-                            html! {
-                                <li key={todo.id}>
-                                    <span style={if todo.completed { "text-decoration: line-through;" } else { "" }}>
-                                        {todo.text.clone()}
-                                    </span>
-                                    <span>{format!("(ID: {}, Completed {})", todo.id, if todo.completed {"Yes"} else {"No"})}</span>
-                                    <label>
-                                        <input
-                                            type="checkbox"
-                                            checked={todo.completed}
-                                            onclick={link.callback(move |_| ToDosMsg::ToggleToDo(todo_id))}
-                                        />
-                                        { "Completed "}
-                                    </label>
-                                    <button
-                                        onclick={link.callback(move |_| ToDosMsg::RemoveToDo(todo_id))}
-                                        style="margin-left: 10px; background-color: #ff4444; color: white; border: none; padding: 2px 8px; cursor: pointer;"
-                                    >
-                                        {"Delete"}
-                                    </button>
-                                </li>
-                            }
-                        })}
-                    </div>
-                </div>
+            html! {
+            <div class="flex flex-col container mx-auto px-4">
+                <TodoHeader total_count={self.todos.len()} />
+
+                <AddTodoForm
+                    value={self.new_todo_text.clone()}
+                    onchange={link.callback(|text| ToDosMsg::UpdateToDo(text))}
+                    onsubmit={link.callback(|text| ToDosMsg::AddToDo(text))}
+                />
+
+                <TodoList
+                    todos={self.todos.clone()}
+                    ontoggle={link.callback(|id| ToDosMsg::ToggleToDo(id))}
+                    ondelete={link.callback(|id| ToDosMsg::RemoveToDo(id))}
+                />
             </div>
         }
     }
