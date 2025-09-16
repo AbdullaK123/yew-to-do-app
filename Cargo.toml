@@ -1,0 +1,9 @@
+[package]
+name = "yew-to-do-app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = "1.0.225"
+web-sys = "0.3.78"
+yew = { version = "0.21.0", features = ["csr"] }
